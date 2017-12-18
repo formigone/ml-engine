@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-import cnn1_model
+import cnn1_model, incep1_model
 
 tf.logging.set_verbosity('DEBUG')
 tf.logging.debug('Tensorflow version: {}'.format(tf.__version__))
@@ -15,7 +15,7 @@ def parse_args():
    flags.DEFINE_string('model', '', 'Model to be used')
    flags.DEFINE_float('learning_rate', 0.1, 'Learning rate')
    flags.DEFINE_float('dropout', 0.5, 'Dropout percentage')
-   flags.DEFINE_integer('num_classes', 3, 'Number of classes to classify')
+   flags.DEFINE_integer('num_classes', 12, 'Number of classes to classify')
    flags.DEFINE_integer('epochs', 1, 'Total epocs to run')
    flags.DEFINE_integer('batch_size', 16, 'Input function batch size')
    flags.DEFINE_integer('buffer_size', 16, 'Input function buffer size')
@@ -24,7 +24,7 @@ def parse_args():
 
 
 def gen_input(filename, batch_size=16, shuffle=False, repeat=1, buffer_size=16, record_shape=(4,)):
-   tf.logging.debug('input_fn: {}'.format({'batch_size': batch_size, 'shuffle': shuffle, 'repeat': repeat, 'buffer_size': buffer_size}))
+   tf.logging.debug('input_fn: {}'.format({'batch_size': batch_size, 'shuffle': shuffle, 'repeat': repeat, 'buffer_size': buffer_size, 'shape': record_shape}))
    def decode(line):
       features = {
          'x': tf.FixedLenFeature(record_shape, tf.float32),
@@ -51,18 +51,21 @@ def main(_):
       repeat=FLAGS.epochs, 
       shuffle=FLAGS.shuffle, 
       buffer_size=FLAGS.buffer_size, 
-      record_shape=(200 * 200 * 3,)
+      record_shape=(161 * 99,)
    )
    model_params = {
       'learning_rate': FLAGS.learning_rate,
-      'dropout': FLAGS.dropout,
+      'dropout_rate': FLAGS.dropout,
       'num_classes': FLAGS.num_classes,
       'verbosity': FLAGS.verbosity,
+      'verbose_summary': FLAGS.verbosity == tf.logging.DEBUG,
    }
 
    model_fn = None
    if FLAGS.model == '':
       model_fn = cnn1_model.model_fn
+   elif FLAGS.model == 'incep1':
+      model_fn = incep1_model.model_fn
 
    tf.logging.debug('params: {}'.format(model_params))
    estimator = tf.estimator.Estimator(model_dir=FLAGS.model_dir, model_fn=model_fn, params=model_params)
@@ -77,7 +80,7 @@ def main(_):
          repeat=1,
          shuffle=False,
          buffer_size=FLAGS.buffer_size,
-         record_shape=(200 * 200 * 3,)
+         record_shape=(161 * 99,)
       )
 
       predictions = estimator.predict(input_fn=input_fn)
