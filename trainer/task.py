@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from models import cnn1
+import cnn1_model
 
 tf.logging.set_verbosity('DEBUG')
 tf.logging.debug('Tensorflow version: {}'.format(tf.__version__))
@@ -62,7 +62,7 @@ def main(_):
 
    model_fn = None
    if FLAGS.model == '':
-      model_fn = cnn1.model_fn
+      model_fn = cnn1_model.model_fn
 
    tf.logging.debug('params: {}'.format(model_params))
    estimator = tf.estimator.Estimator(model_dir=FLAGS.model_dir, model_fn=model_fn, params=model_params)
