@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-import cnn1_model, incep1_model
+import cnn1_model, incep1_model, incep2_model, incep3_model, incep4_model, cnn2_model
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -72,6 +72,14 @@ def main(_):
     model_fn = cnn1_model.model_fn
   elif FLAGS.model == 'incep1':
     model_fn = incep1_model.model_fn
+  elif FLAGS.model == 'incep2':
+    model_fn = incep2_model.model_fn
+  elif FLAGS.model == 'incep3':
+    model_fn = incep3_model.model_fn
+  elif FLAGS.model == 'incep4':
+    model_fn = incep4_model.model_fn
+  elif FLAGS.model == 'cnn2':
+    model_fn = cnn2_model.model_fn
 
   if model_fn is None:
     raise ValueError('Invalid module_fn')
