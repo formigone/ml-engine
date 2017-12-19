@@ -30,8 +30,8 @@ def model_fn(features, labels, mode, params):
     log_conv_kernel('conv3')
     tf.summary.image('pool3', pool3[:, :, :, 0:1])
 
-  conv4 = tf.layers.conv2d(pool2, filters=128, kernel_size=3, activation=tf.nn.relu, name='conv4')
-  pool4 = tf.layers.max_pooling2d(conv4, pool_size=[2, 2], strides=2, name='pool3')
+  conv4 = tf.layers.conv2d(pool3, filters=128, kernel_size=3, activation=tf.nn.relu, name='conv4')
+  pool4 = tf.layers.max_pooling2d(conv4, pool_size=[2, 2], strides=2, name='pool4')
   if params['verbose_summary']:
     log_conv_kernel('conv4')
     tf.summary.image('pool4', pool4[:, :, :, 0:1])
