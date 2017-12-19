@@ -1,4 +1,6 @@
 import tensorflow as tf
+import os
+import json
 
 import cnn1_model, incep1_model, incep2_model, incep3_model, incep4_model, cnn2_model
 
@@ -11,7 +13,7 @@ def parse_args():
   flags.DEFINE_string('mode', 'train', 'Either train, eval, predict')
   flags.DEFINE_string('model_dir', '', 'Path to saved_model')
   flags.DEFINE_string('model', 'incep1', 'Model to be used')
-  flags.DEFINE_float('learning_rate', 0.1, 'Learning rate')
+  flags.DEFINE_float('learning_rate', 0.05, 'Learning rate')
   flags.DEFINE_float('dropout', 0.5, 'Dropout percentage')
   flags.DEFINE_integer('num_classes', 12, 'Number of classes to classify')
   flags.DEFINE_integer('epochs', 1, 'Total epocs to run')
@@ -20,11 +22,20 @@ def parse_args():
   flags.DEFINE_boolean('shuffle', False, 'Should input_fn shuffle input')
   flags.DEFINE_string('verbosity', tf.logging.DEBUG, 'Verbosity level of Tensorflow app')
 
+  flags.DEFINE_boolean('distributed', False, 'When set, be sure to also specify task_type and task_index')
+  flags.DEFINE_string('task_type', '', 'Used in distributed training')
+  flags.DEFINE_integer('task_index', -1, 'Used in distributed training')
+
 
 def gen_input(filename, batch_size=16, shuffle=False, repeat=1, buffer_size=16, record_shape=(4,)):
-  tf.logging.debug('input_fn: {}'.format(
-    {'batch_size': batch_size, 'shuffle': shuffle, 'repeat': repeat, 'buffer_size': buffer_size,
-     'shape': record_shape}))
+  tf.logging.debug('input_fn: {}'.format({
+    'batch_size': batch_size,
+    'shuffle': shuffle,
+    'repeat': repeat,
+    'buffer_size': buffer_size,
+    'shape': record_shape,
+    'input': filename,
+  }))
 
   def decode(line):
     features = {
@@ -50,8 +61,12 @@ def gen_input(filename, batch_size=16, shuffle=False, repeat=1, buffer_size=16, 
 def main(_):
   tf.logging.set_verbosity(FLAGS.verbosity)
   tf.logging.debug('Tensorflow version: {}'.format(tf.__version__))
-  tf.logging.debug('App config: {}'.format(
-    {'input': FLAGS.input, 'mode': FLAGS.mode, 'model': FLAGS.model, 'model_dir': FLAGS.model_dir}))
+  tf.logging.debug('App config: {}'.format({
+    'input': FLAGS.input,
+    'mode': FLAGS.mode,
+    'model': FLAGS.model,
+    'model_dir': FLAGS.model_dir,
+  }))
   input_fn = gen_input(FLAGS.input,
                        batch_size=FLAGS.batch_size,
                        repeat=FLAGS.epochs,
@@ -85,10 +100,37 @@ def main(_):
     raise ValueError('Invalid module_fn')
 
   tf.logging.debug('params: {}'.format(model_params))
+
+  if FLAGS.distributed:
+    cluster = {
+      'cluster': {
+        'master': ['localhost:2222'],
+        'ps': ['localhost:2223'],
+        'worker': ['localhost:2224', 'localhost:2225'],
+      },
+      'task': {
+        'type': FLAGS.task_type,
+        'index': FLAGS.task_index,
+      },
+    }
+
+    cluster = json.dumps(cluster)
+    os.environ['TF_CONFIG'] = cluster
+    tf.logging.debug('TF_CONFIG: {}'.format(cluster))
+
   run_config = tf.estimator.RunConfig()
   run_config = run_config.replace(model_dir=FLAGS.model_dir)
-  estimator = tf.estimator.Estimator(model_dir=FLAGS.model_dir, model_fn=model_fn, params=model_params,
-                                     config=run_config)
+
+  tf.logging.debug('RunConfig: {}'.format({
+    'save_summary_steps': run_config.save_summary_steps,
+    'is_chief': run_config.is_chief,
+    'task_type': run_config.task_type,
+    'task_id': run_config.task_id,
+    'num_ps': run_config.num_ps_replicas,
+    'num_worker': run_config.num_worker_replicas,
+  }))
+
+  estimator = tf.estimator.Estimator(model_dir=FLAGS.model_dir, model_fn=model_fn, params=model_params, config=run_config)
 
   if FLAGS.mode == 'train':
     estimator.train(input_fn=input_fn)
