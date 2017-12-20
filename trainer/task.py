@@ -1,6 +1,4 @@
 import tensorflow as tf
-import os
-import json
 
 import cnn1_model, incep1_model, incep2_model, incep3_model, incep4_model, cnn2_model, cnn3_model
 
@@ -65,25 +63,6 @@ def main(_):
     'model_dir': FLAGS.model_dir,
     'max_steps': FLAGS.max_steps,
   }))
-
-
-  if FLAGS.task != '':
-    cluster = {
-      'cluster': {
-        'master': ['10.0.0.42:2222'],
-        'ps': ['10.0.0.42:2223'],
-        'worker': ['10.0.0.23:2225'],
-      },
-      'task': {
-        'type': FLAGS.task,
-        'index': 0,
-      }
-    }
-
-    cluster = json.dumps(cluster)
-    tf.logging.debug(' CONFIG: {}'.format(cluster))
-    os.environ['TF_CONFIG'] = cluster
-
 
   train_input_fn = gen_input(FLAGS.train_input, batch_size=FLAGS.batch_size, buffer_size=FLAGS.buffer_size)
   eval_input_fn = gen_input(FLAGS.eval_input)
