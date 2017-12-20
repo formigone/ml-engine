@@ -58,9 +58,8 @@ def model_fn(features, labels, mode):
   )
 
 
-def main(task_type, task_index):
+def main(task_type, task_index, input, model_dir='/tmp/dist_train'):
   tf.logging.set_verbosity(tf.logging.DEBUG)
-  input = '../tensorflow-speech-recognition-challenge/test_no_aug_12.tfrecords'
   input_fn = gen_input(input)
 
   cluster = {
@@ -72,15 +71,20 @@ def main(task_type, task_index):
     'task': {
       'type': task_type,
       'index': int(task_index),
-    },
+    }
   }
 
   cluster = json.dumps(cluster)
   tf.logging.debug(' CONFIG: {}'.format(cluster))
   os.environ['TF_CONFIG'] = cluster
+  config = tf.estimator.RunConfig(save_summary_steps=300, model_dir=model_dir)
 
-  estimator = tf.estimator.Estimator(model_fn=model_fn, model_dir='/tmp/dist_train')
-  estimator.train(input_fn=input_fn)
+  estimator = tf.estimator.Estimator(model_fn=model_fn, config=config)
+  train_spec = tf.estimator.TrainSpec(input_fn=input_fn)
+  eval_spec = tf.estimator.EvalSpec(input_fn=input_fn, steps=None, start_delay_secs=30, throttle_secs=30)
+
+  tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
 
-main(sys.argv[1], sys.argv[2])
+
+main(sys.argv[1], sys.argv[2], sys.argv[3])
