@@ -58,15 +58,15 @@ def model_fn(features, labels, mode):
   )
 
 
-def main(task_type, task_index, input, model_dir='/tmp/dist_train'):
+def main(task_type, task_index, input, model_dir='/tmp/dist_home_train'):
   tf.logging.set_verbosity(tf.logging.DEBUG)
   input_fn = gen_input(input)
 
   cluster = {
     'cluster': {
-      'master': ['localhost:2222'],
-      'ps': ['localhost:2223'],
-      'worker': ['localhost:2224', 'localhost:2225'],
+      'master': ['10.0.0.23:2222'],
+      'ps': ['10.0.0.23:2223'],
+      'worker': ['10.0.0.42:2225'],
     },
     'task': {
       'type': task_type,
