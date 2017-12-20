@@ -1,4 +1,6 @@
 import tensorflow as tf
+import os
+import json
 
 import cnn1_model, incep1_model, incep2_model, incep3_model, incep4_model, cnn2_model, cnn3_model
 
@@ -14,14 +16,13 @@ def parse_args():
   flags.DEFINE_float('learning_rate', 0.05, 'Learning rate')
   flags.DEFINE_float('dropout', 0.5, 'Dropout percentage')
   flags.DEFINE_integer('num_classes', 12, 'Number of classes to classify')
-  flags.DEFINE_integer('epochs', 1, 'Total epocs to run')
+  flags.DEFINE_integer('max_steps', 10, 'Max steps to train for: train_spec.max_steps')
   flags.DEFINE_integer('batch_size', 8, 'Input function batch size')
   flags.DEFINE_integer('buffer_size', 4, 'Input function buffer size')
-  flags.DEFINE_string('verbosity', tf.logging.DEBUG, 'Verbosity level of Tensorflow app')
+  flags.DEFINE_string('verbosity', tf.logging.DEBUG, 'Logging verbosity level')
 
-  flags.DEFINE_boolean('distributed', False, 'When set, be sure to also specify task_type and task_index')
-  flags.DEFINE_string('task_type', '', 'Used in distributed training')
-  flags.DEFINE_integer('task_index', -1, 'Used in distributed training')
+
+  flags.DEFINE_string('task', 'master', 'Test')
 
 
 def gen_input(filename, batch_size=16, repeat=1, buffer_size=1, record_shape=(161 * 99,)):
@@ -62,13 +63,30 @@ def main(_):
     'eval_input': FLAGS.eval_input,
     'model': FLAGS.model,
     'model_dir': FLAGS.model_dir,
+    'max_steps': FLAGS.max_steps,
   }))
-  train_input_fn = gen_input(FLAGS.train_input,
-                       batch_size=FLAGS.batch_size,
-                       repeat=FLAGS.epochs,
-                       buffer_size=FLAGS.buffer_size)
 
+
+  cluster = {
+    'cluster': {
+      'master': ['10.0.0.42:2222'],
+      'ps': ['10.0.0.42:2223'],
+      'worker': ['10.0.0.23:2225'],
+    },
+    'task': {
+      'type': FLAGS.task,
+      'index': 0,
+    }
+  }
+
+  cluster = json.dumps(cluster)
+  tf.logging.debug(' CONFIG: {}'.format(cluster))
+  os.environ['TF_CONFIG'] = cluster
+
+
+  train_input_fn = gen_input(FLAGS.train_input, batch_size=FLAGS.batch_size, buffer_size=FLAGS.buffer_size)
   eval_input_fn = gen_input(FLAGS.eval_input)
+
   model_params = {
     'learning_rate': FLAGS.learning_rate,
     'dropout_rate': FLAGS.dropout,
@@ -99,8 +117,8 @@ def main(_):
   tf.logging.debug('params: {}'.format(model_params))
 
   estimator = tf.estimator.Estimator(model_dir=FLAGS.model_dir, model_fn=model_fn, params=model_params)
-  train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=1000)
-  eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, steps=None, start_delay_secs=30, throttle_secs=30)
+  train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=FLAGS.max_steps)
+  eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, steps=None, start_delay_secs=30)
 
   tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 

@@ -17,6 +17,7 @@ def model_fn(features, labels, mode, params):
   pool1 = tf.layers.max_pooling2d(conv1b, pool_size=[2, 2], strides=2, name='pool1')
   if params['verbose_summary']:
     log_conv_kernel('conv1')
+    log_conv_kernel('conv1b')
     tf.summary.image('pool1', pool1[:, :, :, 0:1])
 
   conv2 = tf.layers.conv2d(pool1, filters=32, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv2')
@@ -24,6 +25,7 @@ def model_fn(features, labels, mode, params):
   pool2 = tf.layers.max_pooling2d(conv2b, pool_size=[2, 2], strides=2, name='pool2')
   if params['verbose_summary']:
     log_conv_kernel('conv2')
+    log_conv_kernel('conv2b')
     tf.summary.image('pool2', pool2[:, :, :, 0:1])
 
   conv3 = tf.layers.conv2d(pool2, filters=64, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv3')
@@ -31,6 +33,7 @@ def model_fn(features, labels, mode, params):
   pool3 = tf.layers.max_pooling2d(conv3b, pool_size=[2, 2], strides=2, name='pool3')
   if params['verbose_summary']:
     log_conv_kernel('conv3')
+    log_conv_kernel('conv3b')
     tf.summary.image('pool3', pool3[:, :, :, 0:1])
 
   conv4 = tf.layers.conv2d(pool3, filters=128, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv4')
@@ -38,6 +41,7 @@ def model_fn(features, labels, mode, params):
   pool4 = tf.layers.max_pooling2d(conv4b, pool_size=[2, 2], strides=2, name='pool4')
   if params['verbose_summary']:
     log_conv_kernel('conv4')
+    log_conv_kernel('conv4b')
     tf.summary.image('pool4', pool4[:, :, :, 0:1])
 
   dim = pool4.get_shape()[1:]

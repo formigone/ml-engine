@@ -7,7 +7,7 @@ def flatten(input, name='flatten'):
   return tf.reshape(input, [-1, dim], name=name)
 
 
-def inception_block(prev, t1x1=2, t3x3=2, t5x5=2, tmp=2, name='incep'):
+def inception_block(prev, t1x1=2, t3x3=2, t5x5=2, tmp=2, name='incep', log_conv_weights=False):
   with tf.variable_scope(name):
     with tf.variable_scope('1x1_conv'):
       tower_1x1 = tf.layers.conv2d(prev,
