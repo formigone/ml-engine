@@ -22,7 +22,7 @@ def parse_args():
   flags.DEFINE_string('verbosity', tf.logging.DEBUG, 'Logging verbosity level')
 
 
-  flags.DEFINE_string('task', 'master', 'Test')
+  flags.DEFINE_string('task', '', 'Test')
 
 
 def gen_input(filename, batch_size=16, repeat=1, buffer_size=1, record_shape=(161 * 99,)):
@@ -67,21 +67,22 @@ def main(_):
   }))
 
 
-  cluster = {
-    'cluster': {
-      'master': ['10.0.0.42:2222'],
-      'ps': ['10.0.0.42:2223'],
-      'worker': ['10.0.0.23:2225'],
-    },
-    'task': {
-      'type': FLAGS.task,
-      'index': 0,
+  if FLAGS.task != '':
+    cluster = {
+      'cluster': {
+        'master': ['10.0.0.42:2222'],
+        'ps': ['10.0.0.42:2223'],
+        'worker': ['10.0.0.23:2225'],
+      },
+      'task': {
+        'type': FLAGS.task,
+        'index': 0,
+      }
     }
-  }
 
-  cluster = json.dumps(cluster)
-  tf.logging.debug(' CONFIG: {}'.format(cluster))
-  os.environ['TF_CONFIG'] = cluster
+    cluster = json.dumps(cluster)
+    tf.logging.debug(' CONFIG: {}'.format(cluster))
+    os.environ['TF_CONFIG'] = cluster
 
 
   train_input_fn = gen_input(FLAGS.train_input, batch_size=FLAGS.batch_size, buffer_size=FLAGS.buffer_size)
