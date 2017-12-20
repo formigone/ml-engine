@@ -5,7 +5,7 @@ from graph_utils import log_conv_kernel
 
 
 def model_fn(features, labels, mode, params):
-    x = tf.reshape(features, [-1, 99, 161, 1], name='input_incep4')
+    x = tf.reshape(features, [-1, 99, 161, 1], name='input_incep5')
     x_norm = tf.layers.batch_normalization(x, training=mode == tf.estimator.ModeKeys.TRAIN, name='x_norm')
     if params['verbose_summary']:
         tf.summary.image('input', x)
@@ -18,13 +18,19 @@ def model_fn(features, labels, mode, params):
         log_conv_kernel('conv1b')
         tf.summary.image('pool1', pool1[:, :, :, 0:1])
 
-    incep2 = inception_block(conv1, name='incep2')
-    incep3 = inception_block(incep2, t1x1=4, t3x3=4, t5x5=4, tmp=4, name='incep3')
-    incep4 = inception_block(incep3, t1x1=8, t3x3=8, t5x5=8, tmp=8, name='incep4')
-    incep5 = inception_block(incep4, t1x1=16, t3x3=16, t5x5=16, tmp=16, name='incep5')
-    incep6 = inception_block(incep5, t1x1=20, t3x3=20, t5x5=20, tmp=20, name='incep6')
+    incep2 = inception_block(pool1, t1x1=16, t3x3=16, t5x5=16, tmp=16, name='incep2')
 
-    flat = flatten(incep6)
+    conv3 = tf.layers.conv2d(incep2, filters=32, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv3')
+    conv3b = tf.layers.conv2d(conv3, filters=32, kernel_size=3, activation=tf.nn.relu, name='conv3b')
+    pool3 = tf.layers.max_pooling2d(conv3b, pool_size=[2, 2], strides=2, name='pool3')
+    if params['verbose_summary']:
+        log_conv_kernel('conv3')
+        log_conv_kernel('conv3b')
+        tf.summary.image('pool3', pool3[:, :, :, 0:1])
+
+    incep4 = inception_block(pool3, t1x1=16, t3x3=16, t5x5=16, tmp=16, name='incep4')
+
+    flat = flatten(incep4)
     dropout4 = tf.layers.dropout(flat, rate=params['dropout_rate'], training=mode == tf.estimator.ModeKeys.TRAIN, name='dropout4')
     dense4 = tf.layers.dense(dropout4, units=2048, activation=tf.nn.relu, name='dense4')
 

@@ -1,6 +1,7 @@
 import tensorflow as tf
+from tensorflow import estimator as estimator
 
-import cnn1_model, incep1_model, incep2_model, incep3_model, incep4_model, cnn2_model, cnn3_model
+import cnn1_model, incep1_model, incep2_model, incep3_model, incep4_model, cnn2_model, cnn3_model, incep5_model, incep6_model, incep7_model, incep8_model
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -86,6 +87,14 @@ def main(_):
     model_fn = incep3_model.model_fn
   elif FLAGS.model == 'incep4':
     model_fn = incep4_model.model_fn
+  elif FLAGS.model == 'incep5':
+    model_fn = incep5_model.model_fn
+  elif FLAGS.model == 'incep6':
+    model_fn = incep6_model.model_fn
+  elif FLAGS.model == 'incep7':
+    model_fn = incep7_model.model_fn
+  elif FLAGS.model == 'incep8':
+    model_fn = incep8_model.model_fn
   elif FLAGS.model == 'cnn2':
     model_fn = cnn2_model.model_fn
   elif FLAGS.model == 'cnn3':
@@ -98,7 +107,7 @@ def main(_):
 
   estimator = tf.estimator.Estimator(model_dir=FLAGS.model_dir, model_fn=model_fn, params=model_params)
   train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=FLAGS.max_steps)
-  eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, steps=None, start_delay_secs=30)
+  eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, steps=None, start_delay_secs=30, throttle_secs=30)
 
   tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
