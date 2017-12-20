@@ -1,6 +1,4 @@
 import tensorflow as tf
-import os
-import json
 
 import cnn1_model, incep1_model, incep2_model, incep3_model, incep4_model, cnn2_model
 
@@ -9,8 +7,8 @@ FLAGS = tf.app.flags.FLAGS
 
 def parse_args():
   flags = tf.app.flags
-  flags.DEFINE_string('input', '', 'Input csv file')
-  flags.DEFINE_string('mode', 'train', 'Either train, eval, predict')
+  flags.DEFINE_string('train_input', '', 'TFRecord used for training')
+  flags.DEFINE_string('eval_input', '', 'TFRecord used for evaluation')
   flags.DEFINE_string('model_dir', '', 'Path to saved_model')
   flags.DEFINE_string('model', 'incep1', 'Model to be used')
   flags.DEFINE_float('learning_rate', 0.05, 'Learning rate')
@@ -19,7 +17,6 @@ def parse_args():
   flags.DEFINE_integer('epochs', 1, 'Total epocs to run')
   flags.DEFINE_integer('batch_size', 8, 'Input function batch size')
   flags.DEFINE_integer('buffer_size', 4, 'Input function buffer size')
-  flags.DEFINE_boolean('shuffle', False, 'Should input_fn shuffle input')
   flags.DEFINE_string('verbosity', tf.logging.DEBUG, 'Verbosity level of Tensorflow app')
 
   flags.DEFINE_boolean('distributed', False, 'When set, be sure to also specify task_type and task_index')
@@ -27,10 +24,9 @@ def parse_args():
   flags.DEFINE_integer('task_index', -1, 'Used in distributed training')
 
 
-def gen_input(filename, batch_size=16, shuffle=False, repeat=1, buffer_size=16, record_shape=(4,)):
+def gen_input(filename, batch_size=16, repeat=1, buffer_size=1, record_shape=(161 * 99,)):
   tf.logging.debug('input_fn: {}'.format({
     'batch_size': batch_size,
-    'shuffle': shuffle,
     'repeat': repeat,
     'buffer_size': buffer_size,
     'shape': record_shape,
@@ -47,7 +43,7 @@ def gen_input(filename, batch_size=16, shuffle=False, repeat=1, buffer_size=16, 
 
   def input_fn():
     dataset = (tf.data.TFRecordDataset([filename])).map(decode)
-    if shuffle:
+    if buffer_size > 1:
       dataset = dataset.shuffle(buffer_size=buffer_size)
     dataset = dataset.repeat(repeat)
     dataset = dataset.batch(batch_size)
@@ -62,18 +58,17 @@ def main(_):
   tf.logging.set_verbosity(FLAGS.verbosity)
   tf.logging.debug('Tensorflow version: {}'.format(tf.__version__))
   tf.logging.debug('App config: {}'.format({
-    'input': FLAGS.input,
-    'mode': FLAGS.mode,
+    'train_input': FLAGS.train_input,
+    'eval_input': FLAGS.eval_input,
     'model': FLAGS.model,
     'model_dir': FLAGS.model_dir,
   }))
-  input_fn = gen_input(FLAGS.input,
+  train_input_fn = gen_input(FLAGS.train_input,
                        batch_size=FLAGS.batch_size,
                        repeat=FLAGS.epochs,
-                       shuffle=FLAGS.shuffle,
-                       buffer_size=FLAGS.buffer_size,
-                       record_shape=(161 * 99,)
-                       )
+                       buffer_size=FLAGS.buffer_size)
+
+  eval_input_fn = gen_input(FLAGS.eval_input)
   model_params = {
     'learning_rate': FLAGS.learning_rate,
     'dropout_rate': FLAGS.dropout,
@@ -101,53 +96,11 @@ def main(_):
 
   tf.logging.debug('params: {}'.format(model_params))
 
-  if FLAGS.distributed:
-    cluster = {
-      'cluster': {
-        'master': ['localhost:2222'],
-        'ps': ['localhost:2223'],
-        'worker': ['localhost:2224', 'localhost:2225'],
-      },
-      'task': {
-        'type': FLAGS.task_type,
-        'index': FLAGS.task_index,
-      },
-    }
+  estimator = tf.estimator.Estimator(model_dir=FLAGS.model_dir, model_fn=model_fn, params=model_params)
+  train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=1000)
+  eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, steps=None, start_delay_secs=30, throttle_secs=30)
 
-    cluster = json.dumps(cluster)
-    os.environ['TF_CONFIG'] = cluster
-    tf.logging.debug('TF_CONFIG: {}'.format(cluster))
-
-  run_config = tf.estimator.RunConfig()
-  run_config = run_config.replace(model_dir=FLAGS.model_dir)
-
-  tf.logging.debug('RunConfig: {}'.format({
-    'save_summary_steps': run_config.save_summary_steps,
-    'is_chief': run_config.is_chief,
-    'task_type': run_config.task_type,
-    'task_id': run_config.task_id,
-    'num_ps': run_config.num_ps_replicas,
-    'num_worker': run_config.num_worker_replicas,
-  }))
-
-  estimator = tf.estimator.Estimator(model_dir=FLAGS.model_dir, model_fn=model_fn, params=model_params, config=run_config)
-
-  if FLAGS.mode == 'train':
-    estimator.train(input_fn=input_fn)
-  elif FLAGS.mode == 'eval':
-    estimator.evaluate(input_fn=input_fn)
-  elif FLAGS.mode == 'predict':
-    input_fn = gen_input(FLAGS.input,
-                         batch_size=FLAGS.batch_size,
-                         repeat=1,
-                         shuffle=False,
-                         buffer_size=FLAGS.buffer_size,
-                         record_shape=(161 * 99,)
-                         )
-
-    predictions = estimator.predict(input_fn=input_fn)
-    for pred in predictions:
-      tf.logging.info('Pred: {}'.format(pred))
+  tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
 
 if __name__ == '__main__':

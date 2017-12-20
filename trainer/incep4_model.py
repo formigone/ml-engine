@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+from util import inception_block, flatten
+
 
 def model_fn(features, labels, mode, params):
     x = tf.reshape(features, [-1, 99, 161, 1], name='input_incep4')
@@ -8,19 +10,16 @@ def model_fn(features, labels, mode, params):
         tf.summary.image('input', x)
 
     incep1 = inception_block(x_norm, name='incep1')
-    incep2 = inception_block(incep1, t1x1=16, t3x3=16, t5x5=16, tmp=16, name='incep2')
-    incep3 = inception_block(incep2, t1x1=32, t3x3=32, t5x5=32, tmp=32, name='incep3')
-    incep4 = inception_block(incep3, t1x1=64, t3x3=64, t5x5=64, tmp=64, name='incep4')
-    incep5 = inception_block(incep4, t1x1=128, t3x3=128, t5x5=128, tmp=128, name='incep5')
-    incep6 = inception_block(incep5, t1x1=256, t3x3=256, t5x5=256, tmp=256, name='incep6')
+    incep2 = inception_block(incep1, t1x1=4, t3x3=4, t5x5=4, tmp=4, name='incep2')
+    incep3 = inception_block(incep2, t1x1=8, t3x3=8, t5x5=8, tmp=8, name='incep3')
+    incep4 = inception_block(incep3, t1x1=16, t3x3=16, t5x5=16, tmp=16, name='incep4')
+    incep5 = inception_block(incep4, t1x1=20, t3x3=20, t5x5=20, tmp=20, name='incep5')
 
-    dim = incep6.get_shape()[1:]
-    dim = int(dim[0] * dim[1] * dim[2])
-    flat = tf.reshape(incep6, [-1, dim], name='flat')
-    dropout7 = tf.layers.dropout(flat, rate=params['dropout_rate'], training=mode == tf.estimator.ModeKeys.TRAIN, name='dropout7')
-    dense7 = tf.layers.dense(dropout7, units=2048, activation=tf.nn.relu, name='dense7')
+    flat = flatten(incep5)
+    dropout4 = tf.layers.dropout(flat, rate=params['dropout_rate'], training=mode == tf.estimator.ModeKeys.TRAIN, name='dropout4')
+    dense4 = tf.layers.dense(dropout4, units=2048, activation=tf.nn.relu, name='dense4')
 
-    logits = tf.layers.dense(dense7, units=params['num_classes'], name='logits')
+    logits = tf.layers.dense(dense4, units=params['num_classes'], name='logits')
 
     predictions = {
         'classes': tf.argmax(logits, axis=1, name='prediction_classes'),
@@ -50,62 +49,3 @@ def model_fn(features, labels, mode, params):
         train_op=train_op,
         eval_metric_ops=eval_metric_ops
     )
-
-
-def inception_block(prev, t1x1=8, t3x3=8, t5x5=8, tmp=8, name='incep'):
-    with tf.variable_scope(name):
-        with tf.variable_scope('1x1_conv'):
-            tower_1x1 = tf.layers.conv2d(prev,
-                                         filters=t1x1,
-                                         kernel_size=1,
-                                         padding='same',
-                                         activation=tf.nn.relu,
-                                         name='1x1_conv')
-
-        with tf.variable_scope('3x3_conv'):
-            tower_3x3 = tf.layers.conv2d(prev,
-                                         filters=t3x3,
-                                         kernel_size=1,
-                                         padding='same',
-                                         activation=tf.nn.relu,
-                                         name='1x1_conv')
-            tower_3x3 = tf.layers.conv2d(tower_3x3,
-                                         filters=t3x3,
-                                         kernel_size=3,
-                                         padding='same',
-                                         activation=tf.nn.relu,
-                                         name='3x3_conv')
-
-        with tf.variable_scope('5x5_conv'):
-            tower_5x5 = tf.layers.conv2d(prev,
-                                         filters=t5x5,
-                                         kernel_size=1,
-                                         padding='same',
-                                         activation=tf.nn.relu,
-                                         name='1x1_conv')
-            tower_5x5 = tf.layers.conv2d(tower_5x5,
-                                         filters=t5x5,
-                                         kernel_size=3,
-                                         padding='same',
-                                         activation=tf.nn.relu,
-                                         name='3x3_conv_1')
-            tower_5x5 = tf.layers.conv2d(tower_5x5,
-                                         filters=t5x5,
-                                         kernel_size=3,
-                                         padding='same',
-                                         activation=tf.nn.relu,
-                                         name='3x3_conv_2')
-
-        with tf.variable_scope('maxpool'):
-            tower_mp = tf.layers.max_pooling2d(prev,
-                                               pool_size=3,
-                                               strides=1,
-                                               padding='same',
-                                               name='3x3_maxpool')
-            tower_mp = tf.layers.conv2d(tower_mp,
-                                         filters=tmp,
-                                         kernel_size=1,
-                                         padding='same',
-                                         activation=tf.nn.relu,
-                                         name='1x1_conv')
-        return tf.concat([tower_1x1, tower_3x3, tower_5x5, tower_mp], axis=3)

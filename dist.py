@@ -80,7 +80,7 @@ def main(task_type, task_index, input, model_dir='/tmp/dist_train'):
   config = tf.estimator.RunConfig(save_summary_steps=300, model_dir=model_dir)
 
   estimator = tf.estimator.Estimator(model_fn=model_fn, config=config)
-  train_spec = tf.estimator.TrainSpec(input_fn=input_fn)
+  train_spec = tf.estimator.TrainSpec(input_fn=input_fn, max_steps=10000)
   eval_spec = tf.estimator.EvalSpec(input_fn=input_fn, steps=None, start_delay_secs=30, throttle_secs=30)
 
   tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
