@@ -1,6 +1,7 @@
 import tensorflow as tf
 
-from util import inception_block, flatten
+from util import inception_block, flatten, double_inception, conv_group
+
 
 
 def model_fn(features, labels, mode, params):
@@ -9,12 +10,19 @@ def model_fn(features, labels, mode, params):
     if params['verbose_summary']:
         tf.summary.image('input', x)
 
-    incep1 = inception_block(x_norm, name='incep1')
-    incep2 = inception_block(incep1, t1x1=4, t3x3=4, t5x5=4, tmp=4, name='incep2')
-    incep3 = inception_block(incep2, t1x1=8, t3x3=8, t5x5=8, tmp=8, name='incep3')
-    incep4 = inception_block(incep3, t1x1=16, t3x3=16, t5x5=16, tmp=16, name='incep4')
+    incep1 = double_inception(x_norm, block_depth=2, name='incep1')
+    conv2 = conv_group(incep1, 16, 'conv_group_2', verbose=params['verbose_summary'])
+    conv3 = conv_group(conv2, 32, 'conv_group_3', verbose=params['verbose_summary'])
 
-    flat = flatten(incep4)
+    incep3 = double_inception(conv3, block_depth=8, name='incep3')
+    conv4 = conv_group(incep3, 64, 'conv_group_4', verbose=params['verbose_summary'])
+    conv5 = conv_group(conv4, 128, 'conv_group_5', verbose=params['verbose_summary'])
+
+    incep6 = double_inception(conv5, block_depth=32, name='incep6')
+    incep7 = double_inception(incep6, block_depth=64, name='incep7')
+    incep8 = double_inception(incep7, block_depth=128, name='incep8')
+
+    flat = flatten(incep8)
     dropout4 = tf.layers.dropout(flat, rate=params['dropout_rate'], training=mode == tf.estimator.ModeKeys.TRAIN, name='dropout4')
     dense4 = tf.layers.dense(dropout4, units=2048, activation=tf.nn.relu, name='dense4')
 
