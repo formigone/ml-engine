@@ -10,10 +10,10 @@ def model_fn(features, labels, mode, params):
         tf.summary.image('input', x)
 
     incep1 = inception_block(x_norm, name='incep1')
-    incep2 = inception_block(incep1, t1x1=4, t3x3=4, t5x5=4, tmp=4, name='incep2')
-    incep3 = inception_block(incep2, t1x1=8, t3x3=8, t5x5=8, tmp=8, name='incep3')
+    incep1_res = tf.reshape(incep1, [-1, 99, 161, 8])
+    incep2 = inception_block(incep1_res, t1x1=4, t3x3=4, t5x5=4, tmp=4, name='incep2')
 
-    flat = flatten(incep3)
+    flat = flatten(incep2)
     dropout4 = tf.layers.dropout(flat, rate=params['dropout_rate'], training=mode == tf.estimator.ModeKeys.TRAIN, name='dropout4')
     dense4 = tf.layers.dense(dropout4, units=2048, activation=tf.nn.relu, name='dense4')
 

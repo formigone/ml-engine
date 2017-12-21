@@ -1,7 +1,8 @@
 import tensorflow as tf
-from tensorflow import estimator as estimator
 
-import cnn1_model, incep1_model, incep2_model, incep3_model, incep4_model, cnn2_model, cnn3_model, incep5_model, incep6_model, incep7_model, incep8_model
+import cnn1_model, cnn2_model, cnn3_model, \
+  incep1_model, incep2_model, incep3_model, incep4_model, incep5_model, incep6_model, \
+  incep7_model, incep8_model, incep9_model, incep10_model, incep11_model, incep12_model, incep13_model
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -15,9 +16,9 @@ def parse_args():
   flags.DEFINE_float('learning_rate', 0.05, 'Learning rate')
   flags.DEFINE_float('dropout', 0.5, 'Dropout percentage')
   flags.DEFINE_integer('num_classes', 12, 'Number of classes to classify')
-  flags.DEFINE_integer('max_steps', 10, 'Max steps to train for: train_spec.max_steps')
   flags.DEFINE_integer('batch_size', 8, 'Input function batch size')
   flags.DEFINE_integer('buffer_size', 4, 'Input function buffer size')
+  flags.DEFINE_integer('repeat_training', 1, 'How many times to repeat entire training sets')
   flags.DEFINE_string('verbosity', tf.logging.DEBUG, 'Logging verbosity level')
 
 
@@ -62,10 +63,9 @@ def main(_):
     'eval_input': FLAGS.eval_input,
     'model': FLAGS.model,
     'model_dir': FLAGS.model_dir,
-    'max_steps': FLAGS.max_steps,
   }))
 
-  train_input_fn = gen_input(FLAGS.train_input, batch_size=FLAGS.batch_size, buffer_size=FLAGS.buffer_size)
+  train_input_fn = gen_input(FLAGS.train_input, batch_size=FLAGS.batch_size, buffer_size=FLAGS.buffer_size, repeat=FLAGS.repeat_training)
   eval_input_fn = gen_input(FLAGS.eval_input)
 
   model_params = {
@@ -95,6 +95,16 @@ def main(_):
     model_fn = incep7_model.model_fn
   elif FLAGS.model == 'incep8':
     model_fn = incep8_model.model_fn
+  elif FLAGS.model == 'incep9':
+    model_fn = incep9_model.model_fn
+  elif FLAGS.model == 'incep10':
+    model_fn = incep10_model.model_fn
+  elif FLAGS.model == 'incep11':
+    model_fn = incep11_model.model_fn
+  elif FLAGS.model == 'incep12':
+    model_fn = incep12_model.model_fn
+  elif FLAGS.model == 'incep13':
+    model_fn = incep13_model.model_fn
   elif FLAGS.model == 'cnn2':
     model_fn = cnn2_model.model_fn
   elif FLAGS.model == 'cnn3':
@@ -106,8 +116,8 @@ def main(_):
   tf.logging.debug('params: {}'.format(model_params))
 
   estimator = tf.estimator.Estimator(model_dir=FLAGS.model_dir, model_fn=model_fn, params=model_params)
-  train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=FLAGS.max_steps)
-  eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, steps=None, start_delay_secs=30, throttle_secs=30)
+  train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=None)
+  eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, steps=None, start_delay_secs=30)
 
   tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
