@@ -9,8 +9,8 @@ def parse_args():
   flags.DEFINE_float('learning_rate', 0.01, 'Learning rate')
   flags.DEFINE_float('dropout', 0.5, 'Dropout percentage')
   flags.DEFINE_integer('num_classes', 12, 'Number of classes to classify')
-  flags.DEFINE_integer('batch_size', 65, 'Input function batch size')
-  flags.DEFINE_integer('buffer_size', 1024, 'Input function buffer size')
+  flags.DEFINE_integer('batch_size', 32, 'Input function batch size')
+  flags.DEFINE_integer('buffer_size', 256, 'Input function buffer size')
   flags.DEFINE_integer('repeat_training', 1, 'How many times to repeat entire training sets')
   flags.DEFINE_string('verbosity', tf.logging.DEBUG, 'Logging verbosity level')
 
