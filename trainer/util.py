@@ -34,7 +34,7 @@ def conv_group(prev, filters, name='conv_group', verbose=False):
     return pool
 
 
-def inception_block(prev, t1x1=2, t3x3=2, t5x5=2, tmp=2, name='incep', norm=False, , mode=None):
+def inception_block(prev, t1x1=2, t3x3=2, t5x5=2, tmp=2, name='incep', norm=False, mode=None):
   with tf.variable_scope(name):
     with tf.variable_scope('1x1_conv'):
       tower_1x1 = tf.layers.conv2d(prev,
