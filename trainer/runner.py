@@ -13,6 +13,7 @@ def parse_args():
   flags.DEFINE_integer('buffer_size', 256, 'Input function buffer size')
   flags.DEFINE_integer('repeat_training', 1, 'How many times to repeat entire training sets')
   flags.DEFINE_string('verbosity', tf.logging.DEBUG, 'Logging verbosity level')
+  flags.DEFINE_boolean('flat_input', False, 'If set, input sample is considered to be shaped (16000,)')
 
   return flags.FLAGS
 
@@ -55,10 +56,20 @@ def run(model_fn):
     'train_input': args.train_input,
     'eval_input': args.eval_input,
     'model_dir': args.model_dir,
+    'flat_input': args.flat_input,
   }))
 
-  train_input_fn = gen_input(args.train_input, batch_size=args.batch_size, buffer_size=args.buffer_size, repeat=args.repeat_training)
-  eval_input_fn = gen_input(args.eval_input)
+  if args.flat_input:
+    input_shape = (16000,)
+  else:
+    input_shape = (161 * 99,)
+
+  train_input_fn = gen_input(args.train_input,
+                             batch_size=args.batch_size,
+                             buffer_size=args.buffer_size,
+                             repeat=args.repeat_training,
+                             record_shape=input_shape)
+  eval_input_fn = gen_input(args.eval_input, record_shape=input_shape)
 
   model_params = {
     'learning_rate': args.learning_rate,
