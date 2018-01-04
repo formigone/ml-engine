@@ -6,15 +6,15 @@ import runner
 
 
 def model_fn(features, labels, mode, params):
-  x = tf.reshape(features, [-1, 125, 128, 1], name='input_flatv1')
+  x = tf.reshape(features, [-1, 125, 128, 1], name='input_flatv2')
   x_flat = tf.reshape(features, [-1, 16000])
   x_norm = tf.layers.batch_normalization(x, training=mode == tf.estimator.ModeKeys.TRAIN, name='x_norm')
   if params['verbose_summary']:
     tf.summary.image('input', x)
     tf.summary.audio('input', x_flat, 16000)
 
-  conv1 = tf.layers.conv2d(x_norm, filters=16, kernel_size=3, activation=tf.nn.relu, name='conv1')
-  conv2 = tf.layers.conv2d(conv1, filters=32, kernel_size=3, activation=tf.nn.relu, name='conv2')
+  conv1 = tf.layers.conv2d(x_norm, filters=16, kernel_size=7, activation=tf.nn.relu, name='conv1')
+  conv2 = tf.layers.conv2d(conv1, filters=32, kernel_size=5, activation=tf.nn.relu, name='conv2')
   conv3 = tf.layers.conv2d(conv2, filters=64, kernel_size=3, activation=tf.nn.relu, name='conv3')
   pool3 = tf.layers.max_pooling2d(conv3, pool_size=[2, 2], strides=2, name='pool3')
   if params['verbose_summary']:
@@ -36,8 +36,8 @@ def model_fn(features, labels, mode, params):
     tf.summary.image('pool6', pool6[:, :, :, 0:1])
 
   conv7 = tf.layers.conv2d(pool6, filters=1024, kernel_size=3, activation=tf.nn.relu, name='conv7')
-  conv8 = tf.layers.conv2d(conv7, filters=1024, kernel_size=5, activation=tf.nn.relu, name='conv8')
-  conv9 = tf.layers.conv2d(conv8, filters=1024, kernel_size=7, activation=tf.nn.relu, name='conv9')
+  conv8 = tf.layers.conv2d(conv7, filters=1024, kernel_size=3, activation=tf.nn.relu, name='conv8')
+  conv9 = tf.layers.conv2d(conv8, filters=1024, kernel_size=3, activation=tf.nn.relu, name='conv9')
   pool9 = tf.layers.max_pooling2d(conv9, pool_size=[2, 2], strides=2, name='pool9')
   if params['verbose_summary']:
     for i in range(7, 10):
