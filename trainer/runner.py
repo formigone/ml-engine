@@ -1,5 +1,7 @@
 import tensorflow as tf
 import numpy as np
+import os
+import time
 
 
 classes = [
@@ -41,6 +43,8 @@ def parse_args():
   flags.DEFINE_string('train_input', '', 'TFRecord used for training')
   flags.DEFINE_string('eval_input', '', 'TFRecord used for evaluation')
   flags.DEFINE_string('predict_input', '', 'TFRecord used for prediction')
+  flags.DEFINE_string('predict_input_dir', '', 'Root directory where files used for prediction are')
+  flags.DEFINE_string('output_file', '', 'Path to CSV file where predictions will be written')
   flags.DEFINE_string('model_dir', '', 'Path to saved_model')
   flags.DEFINE_string('mode', 'train', 'Either train or predict')
   flags.DEFINE_float('learning_rate', 0.01, 'Learning rate')
@@ -131,10 +135,23 @@ def run(model_fn):
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
   elif args.mode == 'predict':
     input_fn = gen_input(args.predict_input, record_shape=input_shape)
+    tf.logging.debug('Generating predictions...')
     predictions = estimator.predict(input_fn=input_fn)
+    tf.logging.debug('Got predictions')
 
-    for pred in predictions:
-      label = int2label(np.argmax(pred['predictions']))
-      print('{} ==> {}'.format(label, pred['predictions']))
+    files = sorted(os.listdir(args.predict_input_dir))
+    tf.logging.debug('Got list of files to label')
+    i = 0
+    with open(args.output_file, 'w+') as out_fh:
+      out_fh.write('fname,label\n')
+      for pred, filename in zip(predictions, files):
+        label = int2label(np.argmax(pred['predictions']))
+        out_fh.write('{},{}\n'.format(filename, label))
+        tf.logging.debug('{},{}'.format(filename, label))
+        if i % 25 == 0:
+          now = time.localtime(time.time())
+          tf.logging.debug('file {}: {} (iteration {}, {})'.format(filename, label, i, time.strftime('%H:%M:%S', now)))
+        i += 1
+      tf.logging.debug('Saved predictions to {}'.format(args.output_file))
   else:
     raise ValueError('Invalid mode')
