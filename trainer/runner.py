@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import itertools
 import os
 import time
 
@@ -134,7 +135,7 @@ def run(model_fn):
 
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
   elif args.mode == 'predict':
-    input_fn = gen_input(args.predict_input, record_shape=input_shape)
+    input_fn = gen_input(args.predict_input, record_shape=input_shape, batch_size=args.batch_size)
     tf.logging.debug('Generating predictions...')
     predictions = estimator.predict(input_fn=input_fn)
     tf.logging.debug('Got predictions')
@@ -144,11 +145,10 @@ def run(model_fn):
     i = 0
     with open(args.output_file, 'w+') as out_fh:
       out_fh.write('fname,label\n')
-      for pred, filename in zip(predictions, files):
+      for pred, filename in itertools.izip(predictions, files):
         label = int2label(np.argmax(pred['predictions']))
         out_fh.write('{},{}\n'.format(filename, label))
-        tf.logging.debug('{},{}'.format(filename, label))
-        if i % 25 == 0:
+        if i % 1000 == 0:
           now = time.localtime(time.time())
           tf.logging.debug('file {}: {} (iteration {}, {})'.format(filename, label, i, time.strftime('%H:%M:%S', now)))
         i += 1
