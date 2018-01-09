@@ -6,18 +6,15 @@ from util import branch_incep, flatten, get_spectrogram
 
 def model_fn(features, labels, mode, params):
   with tf.variable_scope('x_prep'):
-    x = tf.reshape(features, [-1, 125, 161, 2], name='input_incep107_lg')
+    x = tf.reshape(features, [-1, 16000], name='input_incep107_flat_lg')
     x_norm = tf.layers.batch_normalization(x, training=mode == tf.estimator.ModeKeys.TRAIN, name='x_norm')
-    x_freq = tf.reshape(x_norm[:, :, :, 1], [-1, 125, 161], name='reshape_freq')
-    x_freq = tf.slice(x_freq, [0, 0, 0], [-1, 125, 128], name='slice_freq')
-    x_freq = tf.reshape(x_freq, [-1, 125 * 128], name='flatten_freq')
 
-    spec_pow = get_spectrogram(x_freq, type='power', name='spec_pow')
-    spec_mag = get_spectrogram(x_freq, type='magnitude', name='spec_mag')
-    spec_mel = get_spectrogram(x_freq, type='mel', name='spec_mel')
+    spec_pow = get_spectrogram(x_norm, type='power', name='spec_pow')
+    spec_mag = get_spectrogram(x_norm, type='magnitude', name='spec_mag')
+    spec_mel = get_spectrogram(x_norm, type='mel', name='spec_mel')
 
   if params['verbose_summary']:
-    tf.summary.audio('input', x_freq, 16000, max_outputs=12)
+    tf.summary.audio('input', x_norm, 16000, max_outputs=12)
     tf.summary.image('mag', spec_mag)
     tf.summary.image('pow', spec_pow)
     tf.summary.image('mel', spec_mel)
