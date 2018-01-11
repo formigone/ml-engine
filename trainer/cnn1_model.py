@@ -1,18 +1,21 @@
 import tensorflow as tf
 
 from graph_utils import log_conv_kernel
+import runner
 
 ModeKeys = tf.estimator.ModeKeys
 EstimatorSpec = tf.estimator.EstimatorSpec
 
 
 def model_fn(features, labels, mode, params):
-  x = tf.reshape(features, [-1, 99, 161, 1], name='input_cnn1')
-  x_norm = tf.layers.batch_normalization(x, training=mode == ModeKeys.TRAIN, name='x_norm')
+  x = tf.reshape(features, [-1, 125, 161, 2], name='cnn1')
+  x_norm = tf.layers.batch_normalization(x, training=mode == tf.estimator.ModeKeys.TRAIN, name='x_norm')
+  x = tf.reshape(x_norm[:, :, :, 0], [-1, 125, 161, 1], name='reshape_spec')
+
   if params['verbose_summary']:
     tf.summary.image('input', x)
 
-  conv1 = tf.layers.conv2d(x_norm, filters=16, kernel_size=3, activation=tf.nn.relu, name='conv1')
+  conv1 = tf.layers.conv2d(x, filters=16, kernel_size=3, activation=tf.nn.relu, name='conv1')
   pool1 = tf.layers.max_pooling2d(conv1, pool_size=[2, 2], strides=2, name='pool1')
   if params['verbose_summary']:
     log_conv_kernel('conv1')
@@ -47,6 +50,21 @@ def model_fn(features, labels, mode, params):
   if mode == ModeKeys.PREDICT:
     return EstimatorSpec(mode=mode, predictions=predictions)
 
+
+
+  confusion_matrix = tf.confusion_matrix(labels, predictions['classes'], num_classes=params['num_classes'])
+  confusion_matrix = tf.reshape(confusion_matrix, [1, params['num_classes'], params['num_classes'], 1])
+  tf.summary.image('confusion_matrix', tf.cast(confusion_matrix, dtype=tf.float32))
+
+  _, recall= tf.metrics.recall(labels, predictions['classes'])
+  tf.summary.scalar('recall', recall)
+  _, precision = tf.metrics.precision(labels, predictions['classes'])
+  tf.summary.scalar('precision', precision)
+  _, avg = tf.metrics.mean_per_class_accuracy(labels, predictions['classes'], num_classes=params['num_classes'])
+  tf.summary.histogram('mean_per_class', avg)
+
+
+
   onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=params['num_classes'], name='onehot_labels')
   loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=logits)
   tf.summary.scalar('loss', loss)
@@ -67,3 +85,7 @@ def model_fn(features, labels, mode, params):
     train_op=train_op,
     eval_metric_ops=eval_metric_ops
   )
+
+
+if __name__ == '__main__':
+    runner.run(model_fn)

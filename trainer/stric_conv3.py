@@ -1,8 +1,7 @@
 import tensorflow as tf
 
 import runner
-from util import inception_block, flatten
-from graph_utils import log_conv_kernel
+from util import inception_block, flatten, conf_mat
 
 
 def stric_block(prev, filters, mode, name, only_same=False):
@@ -20,12 +19,11 @@ def stric_block(prev, filters, mode, name, only_same=False):
 
 
 def model_fn(features, labels, mode, params):
-    x = tf.reshape(features, [-1, 99, 161, 1], name='input_stric_conv3')
+    x = tf.reshape(features, [-1, 125, 161, 2], name='redid3')
     x_norm = tf.layers.batch_normalization(x, training=mode == tf.estimator.ModeKeys.TRAIN, name='x_norm')
-    if params['verbose_summary']:
-        tf.summary.image('input', x)
+    x = tf.reshape(x_norm[:, :, :, 0], [-1, 125, 161, 1], name='reshape_spec')
 
-    conv = x_norm
+    conv = x
     conv = stric_block(conv, 32, mode, 'conv_1')
     conv = stric_block(conv, 64, mode, 'conv_2')
     conv = stric_block(conv, 128, mode, 'conv_3')
@@ -52,6 +50,8 @@ def model_fn(features, labels, mode, params):
 
     if mode == tf.estimator.ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(mode=mode, predictions={'predictions': predictions['probabilities']})
+
+    tf.summary.image('confusion_matrix', conf_mat(labels, predictions['classes'], params['num_classes']))
 
     onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=params['num_classes'], name='onehot_labels')
     loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=logits)

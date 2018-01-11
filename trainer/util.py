@@ -37,6 +37,7 @@ def conv_group(prev, filters, name='conv_group', verbose=False):
 
 
 def inception_block(prev, t1x1=2, t3x3=2, t5x5=2, tmp=2, name='incep', norm=False, mode=None):
+  training = mode == tf.estimator.ModeKeys.TRAIN
   with tf.variable_scope(name):
     with tf.variable_scope('1x1_conv'):
       tower_1x1 = tf.layers.conv2d(prev,
@@ -46,8 +47,7 @@ def inception_block(prev, t1x1=2, t3x3=2, t5x5=2, tmp=2, name='incep', norm=Fals
                                    activation=tf.nn.relu,
                                    name='1x1_conv')
       if norm and mode is not None:
-        tower_1x1 = tf.layers.batch_normalization(tower_1x1, training=mode == tf.estimator.ModeKeys.TRAIN,
-                                                  name='batch_norm')
+        tower_1x1 = tf.layers.batch_normalization(tower_1x1, training=training, name='batch_norm')
 
     with tf.variable_scope('3x3_conv'):
       tower_3x3 = tf.layers.conv2d(prev,
@@ -63,8 +63,7 @@ def inception_block(prev, t1x1=2, t3x3=2, t5x5=2, tmp=2, name='incep', norm=Fals
                                    activation=tf.nn.relu,
                                    name='3x3_conv')
       if norm and mode is not None:
-        tower_3x3 = tf.layers.batch_normalization(tower_3x3, training=mode == tf.estimator.ModeKeys.TRAIN,
-                                                  name='batch_norm')
+        tower_3x3 = tf.layers.batch_normalization(tower_3x3, training=training, name='batch_norm')
 
     with tf.variable_scope('5x5_conv'):
       tower_5x5 = tf.layers.conv2d(prev,
@@ -86,8 +85,7 @@ def inception_block(prev, t1x1=2, t3x3=2, t5x5=2, tmp=2, name='incep', norm=Fals
                                    activation=tf.nn.relu,
                                    name='3x3_conv_2')
       if norm and mode is not None:
-        tower_5x5 = tf.layers.batch_normalization(tower_5x5, training=mode == tf.estimator.ModeKeys.TRAIN,
-                                                  name='batch_norm')
+        tower_5x5 = tf.layers.batch_normalization(tower_5x5, training=training, name='batch_norm')
 
     with tf.variable_scope('maxpool'):
       tower_mp = tf.layers.max_pooling2d(prev,
@@ -103,8 +101,7 @@ def inception_block(prev, t1x1=2, t3x3=2, t5x5=2, tmp=2, name='incep', norm=Fals
                                   name='1x1_conv')
 
       if norm and mode is not None:
-        tower_mp = tf.layers.batch_normalization(tower_mp, training=mode == tf.estimator.ModeKeys.TRAIN,
-                                                 name='batch_norm')
+        tower_mp = tf.layers.batch_normalization(tower_mp, training=training, name='batch_norm')
 
     return tf.concat([tower_1x1, tower_3x3, tower_5x5, tower_mp], axis=3)
 
@@ -309,3 +306,9 @@ def get_spectrogram(samples, type='power', sr=16000, frame_len=256, step=64, fft
     return tf.reshape(log_spec, [-1, spec_h * spec_w], name=name)
 
   return tf.reshape(log_spec, [-1, spec_h, spec_w, 1], name=name)
+
+
+def conf_mat(labels, predictions, num_classes):
+  confusion_matrix = tf.confusion_matrix(labels, predictions['classes'], num_classes=num_classes)
+  confusion_matrix = tf.reshape(confusion_matrix, [1, num_classes, num_classes, 1])
+  return tf.cast(confusion_matrix, dtype=tf.float32)

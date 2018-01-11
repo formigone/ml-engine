@@ -1,17 +1,16 @@
 import tensorflow as tf
 
 import runner
-from util import inception_block, flatten
+from util import inception_block, flatten, conf_mat
 from graph_utils import log_conv_kernel
 
 
 def model_fn(features, labels, mode, params):
-    x = tf.reshape(features, [-1, 99, 161, 1], name='input_incep7v2')
+    x = tf.reshape(features, [-1, 125, 161, 2], name='incep7v2')
     x_norm = tf.layers.batch_normalization(x, training=mode == tf.estimator.ModeKeys.TRAIN, name='x_norm')
-    if params['verbose_summary']:
-        tf.summary.image('input', x)
+    x = tf.reshape(x_norm[:, :, :, 0], [-1, 125, 161, 1], name='reshape_spec')
 
-    conv1 = tf.layers.conv2d(x_norm, filters=16, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv1')
+    conv1 = tf.layers.conv2d(x, filters=16, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv1')
     conv1b = tf.layers.conv2d(conv1, filters=16, kernel_size=3, activation=tf.nn.relu, name='conv1b')
     pool1 = tf.layers.max_pooling2d(conv1b, pool_size=[2, 2], strides=2, name='pool1')
     if params['verbose_summary']:
@@ -64,6 +63,7 @@ def model_fn(features, labels, mode, params):
     onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=params['num_classes'], name='onehot_labels')
     loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=logits)
     tf.summary.scalar('loss', loss)
+    tf.summary.image('confusion_matrix', conf_mat(labels, predictions['classes'], params['num_classes']))
 
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=params['learning_rate'])
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)

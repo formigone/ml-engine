@@ -8,6 +8,7 @@ def parse_args():
   parser.add_argument('--module', type=str, required=True, help='Module to be executed')
   parser.add_argument('--model-dir', type=str, required=True, help='Name of directory within default gs bucket')
 
+  parser.add_argument('--train-input', type=str, default='train_large_40250.tfrecords', help='Input file to train model on')
   parser.add_argument('--input-shape', type=str, default='flat', help='Kaggle submission file')
   parser.add_argument('--epochs', type=int, default=1, help='Amount of epochs to train for')
   parser.add_argument('--batch', type=int, default=32, help='Batch size')
@@ -33,8 +34,8 @@ def run(args):
     '--runtime-version', '1.4',
     '--config', 'config_gpu_single.yaml',
     '--',
-    '--train_input', 'gs://formigone_datasets/train_data_by_user_16000.tfrecords',
-    '--eval_input', 'gs://formigone_datasets/eval_data_by_user_16000.tfrecordss',
+    '--train_input', 'gs://formigone_datasets/{}'.format(args.train_input),
+    '--eval_input', 'gs://formigone_datasets/eval_large_40250.tfrecords',
     '--repeat_training', str(args.epochs),
     '--model_dir', 'gs://formigone_models/{}'.format(args.model_dir),
     '--input_shape', args.input_shape,

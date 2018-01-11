@@ -7,7 +7,7 @@ def parse_args():
   parser.add_argument('--module', type=str, required=True, help='Module to be executed')
   parser.add_argument('--model-dir', type=str, required=True, help='Name of directory within default gs bucket')
   parser.add_argument('--output-file', type=str, required=True, help='Kaggle submission file')
-  parser.add_argument('--input-shape', type=str, default='flat', help='Kaggle submission file')
+  parser.add_argument('--input-shape', type=str, default='stack', help='Kaggle submission file')
   parser.add_argument('--dropout', type=float, default=0.5, help='Dropout rate')
 
   return parser.parse_args()

@@ -1,14 +1,16 @@
 import tensorflow as tf
 
 import runner
-from util import inception_block, flatten
+from util import inception_block, flatten, get_spectrogram
 from graph_utils import log_conv_kernel
 
 
 def model_fn(features, labels, mode, params):
-    x = tf.reshape(features, [-1, 125, 161, 2], name='incep9')
+    x = tf.reshape(features, [-1, 16000], name='input_incep9_flat')
     x_norm = tf.layers.batch_normalization(x, training=mode == tf.estimator.ModeKeys.TRAIN, name='x_norm')
-    x = tf.reshape(x_norm[:, :, :, 0], [-1, 125, 161, 1], name='reshape_spec')
+    x = get_spectrogram(x_norm, type='mel/pow')
+    if params['verbose_summary']:
+        tf.summary.image('input', x)
 
     conv1 = tf.layers.conv2d(x, filters=16, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv1')
     conv1b = tf.layers.conv2d(conv1, filters=16, kernel_size=3, activation=tf.nn.relu, name='conv1b')
@@ -54,7 +56,15 @@ def model_fn(features, labels, mode, params):
         log_conv_kernel('conv8b')
         tf.summary.image('pool8', pool8[:, :, :, 0:1])
 
-    flat = flatten(pool8)
+    conv9 = tf.layers.conv2d(pool8, filters=512, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv9')
+    conv9b = tf.layers.conv2d(conv9, filters=512, kernel_size=3, activation=tf.nn.relu, name='conv9b')
+    pool9 = tf.layers.max_pooling2d(conv9b, pool_size=[2, 2], strides=2, name='pool9')
+    if params['verbose_summary']:
+        log_conv_kernel('conv9')
+        log_conv_kernel('conv9b')
+        tf.summary.image('pool9', pool9[:, :, :, 0:1])
+
+    flat = flatten(pool9)
     dropout4 = tf.layers.dropout(flat, rate=params['dropout_rate'], training=mode == tf.estimator.ModeKeys.TRAIN, name='dropout4')
     dense4 = tf.layers.dense(dropout4, units=2048, activation=tf.nn.relu, name='dense4')
 

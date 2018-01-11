@@ -13,14 +13,11 @@ def model_fn(features, labels, mode, params):
     spec_mag = get_spectrogram(x_norm, type='magnitude', reshape_flat=True, name='spec_mag')
     spec_mel = get_spectrogram(x_norm, type='mel', reshape_flat=True, name='spec_mel')
 
-    _, h, w, _ = [-1, 247, 257, 1]
+    _, h, w, _ = [-1, 247, 257, 3]
     spec = tf.reshape(tf.stack([spec_pow, spec_mag, spec_mel], name='stack'), [-1, h, w, 3], name='stack_reshape')
 
   if params['verbose_summary']:
     tf.summary.audio('input', x_norm, 16000, max_outputs=12)
-    tf.summary.image('mag', spec_mag)
-    tf.summary.image('pow', spec_pow)
-    tf.summary.image('mel', spec_mel)
     tf.summary.image('spec', spec)
 
   conv1 = tf.layers.conv2d(spec, filters=16, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv1')

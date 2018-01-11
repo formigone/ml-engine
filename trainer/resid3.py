@@ -1,8 +1,7 @@
 import tensorflow as tf
 
 import runner
-from util import inception_block, flatten
-from graph_utils import log_conv_kernel
+from util import flatten
 
 
 def resid_block(prev, filters, mode, name):
@@ -16,14 +15,13 @@ def resid_block(prev, filters, mode, name):
 
 
 def model_fn(features, labels, mode, params):
-    x = tf.reshape(features, [-1, 99, 161, 1], name='input_resid3')
+    x = tf.reshape(features, [-1, 125, 161, 2], name='redid3')
     x_norm = tf.layers.batch_normalization(x, training=mode == tf.estimator.ModeKeys.TRAIN, name='x_norm')
-    if params['verbose_summary']:
-        tf.summary.image('input', x)
+    x = tf.reshape(x_norm[:, :, :, 0], [-1, 125, 161, 1], name='reshape_spec')
 
-    conv = x_norm
+    conv = x
     l = 1
-    for i in [16, 16, 32, 32, 64, 64, 128, 128, 256, 256, 512, 512]:
+    for i in [64, 128, 256, 512]:
         conv = resid_block(conv, i, mode, 'conv_{}'.format(l))
         l += 1
 
