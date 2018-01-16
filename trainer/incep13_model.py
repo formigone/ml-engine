@@ -5,12 +5,11 @@ from graph_utils import log_conv_kernel
 
 
 def model_fn(features, labels, mode, params):
-    x = tf.reshape(features, [-1, 99, 161, 1], name='input_incep13')
+    x = tf.reshape(features, [-1, 125, 161, 2], name='incep9')
     x_norm = tf.layers.batch_normalization(x, training=mode == tf.estimator.ModeKeys.TRAIN, name='x_norm')
-    if params['verbose_summary']:
-        tf.summary.image('input', x)
+    x = tf.reshape(x_norm[:, :, :, 0], [-1, 125, 161, 1], name='reshape_spec')
 
-    conv1 = tf.layers.conv2d(x_norm, filters=16, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv1')
+    conv1 = tf.layers.conv2d(x, filters=16, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv1')
     conv1b = tf.layers.conv2d(conv1, filters=16, kernel_size=3, activation=tf.nn.relu, name='conv1b')
     conv1c = tf.layers.conv2d(conv1b, filters=16, kernel_size=3, activation=tf.nn.relu, name='conv1c')
     pool1 = tf.layers.max_pooling2d(conv1c, pool_size=[2, 2], strides=2, name='pool1')
@@ -20,6 +19,7 @@ def model_fn(features, labels, mode, params):
         tf.summary.image('pool1', pool1[:, :, :, 0:1])
 
     conv2 = tf.layers.conv2d(pool1, filters=32, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv2')
+
     conv2b = tf.layers.conv2d(conv2, filters=32, kernel_size=3, activation=tf.nn.relu, name='conv2b')
     conv2c = tf.layers.conv2d(conv2b, filters=32, kernel_size=3, activation=tf.nn.relu, name='conv2c')
     pool2 = tf.layers.max_pooling2d(conv2c, pool_size=[2, 2], strides=2, name='pool2')

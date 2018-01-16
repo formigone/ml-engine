@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow.contrib import layers
 
 import runner
 from util import inception_block, flatten, conf_mat
@@ -6,20 +7,21 @@ from util import inception_block, flatten, conf_mat
 
 def stric_block(prev, filters, mode, name, only_same=False):
     conv = prev
+    l2 = layers.l2_regularizer(scale=0.1)
     with tf.variable_scope(name):
-        conv = tf.layers.conv2d(conv, filters=filters, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv1')
-        conv = tf.layers.conv2d(conv, filters=filters, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv2')
+        conv = tf.layers.conv2d(conv, filters=filters, kernel_size=3, padding='same', activation=tf.nn.relu, kernel_regularizer=l2, name='conv1')
+        conv = tf.layers.conv2d(conv, filters=filters, kernel_size=3, padding='same', activation=tf.nn.relu, kernel_regularizer=l2, name='conv2')
         if only_same:
-            conv = tf.layers.conv2d(conv, filters=filters, kernel_size=3, padding='same', activation=tf.nn.relu, name='conv3')
+            conv = tf.layers.conv2d(conv, filters=filters, kernel_size=3, padding='same', activation=tf.nn.relu, kernel_regularizer=l2, name='conv3')
         else:
-            conv = tf.layers.conv2d(conv, filters=filters, kernel_size=3, activation=tf.nn.relu, name='conv3')
-        conv = tf.layers.conv2d(conv, filters=filters, kernel_size=3, strides=2, activation=tf.nn.relu, name='conv4')
+            conv = tf.layers.conv2d(conv, filters=filters, kernel_size=3, activation=tf.nn.relu, kernel_regularizer=l2, name='conv3')
+        conv = tf.layers.conv2d(conv, filters=filters, kernel_size=3, strides=2, activation=tf.nn.relu, kernel_regularizer=l2, name='conv4')
         conv = tf.layers.batch_normalization(conv, training=mode == tf.estimator.ModeKeys.TRAIN, name='batch_norm')
     return conv
 
 
 def model_fn(features, labels, mode, params):
-    x = tf.reshape(features, [-1, 125, 161, 2], name='redid3')
+    x = tf.reshape(features, [-1, 125, 161, 2], name='stricCnn5')
     x_norm = tf.layers.batch_normalization(x, training=mode == tf.estimator.ModeKeys.TRAIN, name='x_norm')
     x = tf.reshape(x_norm[:, :, :, 0], [-1, 125, 161, 1], name='reshape_spec')
 

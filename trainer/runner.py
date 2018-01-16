@@ -55,18 +55,19 @@ def parse_args():
   flags.DEFINE_integer('buffer_size', 128, 'Input function buffer size')
   flags.DEFINE_integer('repeat_training', 1, 'How many times to repeat entire training sets')
   flags.DEFINE_string('verbosity', tf.logging.DEBUG, 'Logging verbosity level')
-  flags.DEFINE_string('input_shape', 'stack', 'Either "stack" (125,161,2), "flat" (16000,), or "spec" (99,161)')
+  flags.DEFINE_string('input_shape', 'stack', 'Either "stack" (125,161,2), "flat" (16000,), or "spec" (99,161), "stack_spec" => takes stack, returns spec')
 
   return flags.FLAGS
 
 
-def gen_input(filename, batch_size=16, repeat=1, buffer_size=1, record_shape=(161 * 99,)):
+def gen_input(filename, batch_size=16, repeat=1, buffer_size=1, record_shape=(161 * 99,), stack_to_spec=False):
   tf.logging.debug('input_fn: {}'.format({
     'batch_size': batch_size,
     'repeat': repeat,
     'buffer_size': buffer_size,
     'shape': record_shape,
     'input': filename,
+    'stack_to_spec': stack_to_spec,
   }))
 
   def decode(line):
@@ -75,6 +76,11 @@ def gen_input(filename, batch_size=16, repeat=1, buffer_size=1, record_shape=(16
       'y': tf.FixedLenFeature((), tf.int64)
     }
     parsed = tf.parse_single_example(line, features)
+
+    if stack_to_spec:
+      x = tf.reshape(parsed['x'][:, :, :, 0], [-1, 125, 161, 1])
+      parsed['x'] = tf.slice(x, [0, 0, 0, 0], [-1, 99, -1, -1])
+
     return parsed['x'], parsed['y']
 
   def input_fn():
@@ -105,7 +111,7 @@ def run(model_fn):
     input_shape = (16000,)
   elif args.input_shape == 'spec':
     input_shape = (161 * 99,)
-  elif args.input_shape == 'stack':
+  elif args.input_shape == 'stack' or args.input_shape == 'stack_spec':
     input_shape = (125 * 161 * 2,)
   else:
     raise ValueError('Invalid input_shape')
@@ -135,7 +141,7 @@ def run(model_fn):
 
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
   elif args.mode == 'predict':
-    input_fn = gen_input(args.predict_input, record_shape=input_shape, batch_size=args.batch_size)
+    input_fn = gen_input(args.predict_input, record_shape=input_shape, batch_size=args.batch_size, stack_to_spec=args.input_shape == 'stack_spec')
     tf.logging.debug('Generating predictions...')
     predictions = estimator.predict(input_fn=input_fn)
     tf.logging.debug('Got predictions')
@@ -144,13 +150,17 @@ def run(model_fn):
     tf.logging.debug('Got list of files to label')
     i = 0
     with open(args.output_file, 'w+') as out_fh:
-      out_fh.write('fname,label\n')
+      out_fh.write('fname,label,pred,label2,pred2,label3,pred3\n')
       for pred, filename in itertools.izip(predictions, files):
-        label = int2label(np.argmax(pred['predictions']))
-        out_fh.write('{},{}\n'.format(filename, label))
+        argi = np.argsort(-pred['predictions'])
+        label, label2, label3, = int2label(argi[0]), int2label(argi[1]), int2label(argi[2])
+        pred, pred2, pred3, = pred['predictions'][argi[0]], pred['predictions'][argi[1]], pred['predictions'][argi[2]]
+        out_fh.write('{},{},{},{},{},{},{}\n'.format(filename, label, pred, label2, pred2, label3, pred3))
         if i % 1000 == 0:
           now = time.localtime(time.time())
-          tf.logging.debug('file {}: {} (iteration {}, {})'.format(filename, label, i, time.strftime('%H:%M:%S', now)))
+          tf.logging.debug('file {}: {}/{}, {}/{}, {}/{} (iteration {}, {})'.format(filename, label, pred,
+                                                                                    label2, pred2, label3, pred3,
+                                                                                    i, time.strftime('%H:%M:%S', now)))
         i += 1
       tf.logging.debug('Saved predictions to {}'.format(args.output_file))
   else:

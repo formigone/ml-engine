@@ -309,6 +309,7 @@ def get_spectrogram(samples, type='power', sr=16000, frame_len=256, step=64, fft
 
 
 def conf_mat(labels, predictions, num_classes):
-  confusion_matrix = tf.confusion_matrix(labels, predictions['classes'], num_classes=num_classes)
-  confusion_matrix = tf.reshape(confusion_matrix, [1, num_classes, num_classes, 1])
-  return tf.cast(confusion_matrix, dtype=tf.float32)
+  with tf.variable_scope('confusion_matrix'):
+    confusion_matrix = tf.confusion_matrix(labels, predictions, num_classes=num_classes)
+    confusion_matrix = tf.reshape(confusion_matrix, [1, num_classes, num_classes, 1])
+    return tf.cast(confusion_matrix, dtype=tf.float32)

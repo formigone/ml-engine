@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 import runner
-from util import inception_block, flatten
+from util import inception_block, flatten, conf_mat
 from graph_utils import log_conv_kernel
 
 
@@ -67,6 +67,8 @@ def model_fn(features, labels, mode, params):
 
     if mode == tf.estimator.ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(mode=mode, predictions={'predictions': predictions['probabilities']})
+
+    tf.summary.image('confusion_matrix', conf_mat(labels, predictions['classes'], params['num_classes']))
 
     onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=params['num_classes'], name='onehot_labels')
     loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=logits)
